@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的日记本</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* 动画效果 */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .diary-card {
+            transition: all 0.3s ease;
+        }
+        
+        .diary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-book text-indigo-600 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-900">我的日记本</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="viewToggle" class="text-gray-600 hover:text-gray-900 transition-colors">
+                        <i class="fas fa-th-large text-lg"></i>
+                    </button>
+                    <button id="exportBtn" class="text-gray-600 hover:text-gray-900 transition-colors">
+                        <i class="fas fa-download text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 操作栏 -->
+        <section class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div class="flex flex-wrap gap-2">
+                <button id="addDiaryBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center">
+                    <i class="fas fa-plus mr-2"></i> 新建日记
+                </button>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="搜索日记..." 
+                           class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <select id="sortSelect" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="desc">最新优先</option>
+                    <option value="asc">最早优先</option>
+                </select>
+                
+                <div class="flex items-center">
+                    <label class="mr-2 text-gray-700">筛选:</label>
+                    <input type="date" id="dateFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+        </section>
+
+        <!-- 日记列表 -->
+        <section id="diaryList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 日记卡片将通过JS动态生成 -->
+        </section>
+
+        <!-- 空状态 -->
+        <div id="emptyState" class="hidden text-center py-16">
+            <i class="fas fa-book-open text-gray-300 text-6xl mb-4"></i>
+            <p class="text-gray-500 text-lg">还没有写日记，点击"新建日记"开始记录生活吧！</p>
+        </div>
+    </main>
+
+    <!-- 日记模态框 -->
+    <div id="diaryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 id="modalTitle" class="text-xl font-bold">新建日记</h2>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto flex-grow">
+                <div class="mb-4">
+                    <label for="diaryDate" class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                    <input type="date" id="diaryDate" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="diaryTitle" class="block text-sm font-medium text-gray-700 mb-1">标题</label>
+                    <input type="text" id="diaryTitle" placeholder="给日记起个标题" 
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="diaryContent" class="block text-sm font-medium text-gray-700 mb-1">内容</label>
+                    <textarea id="diaryContent" rows="12" placeholder="记录今天发生的事情..." 
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="diaryMood" class="block text-sm font-medium text-gray-700 mb-1">心情</label>
+                    <select id="diaryMood" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="happy">😊 开心</option>
+                        <option value="sad">😢 难过</option>
+                        <option value="excited">🤩 兴奋</option>
+                        <option value="calm">😌 平静</option>
+                        <option value="angry">😠 生气</option>
+                        <option value="tired">😴 疲惫</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 p-4 border-t bg-gray-50">
+                <button id="deleteBtn" class="hidden px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="fas fa-trash mr-2"></i>删除
+                </button>
+                <button id="saveBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                    <i class="fas fa-save mr-2"></i>保存
+                </button>
+                <button id="cancelBtn" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors">
+                    取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transform translate-y-20 transition-transform duration-300">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // 日记应用的数据和逻辑
+        class DiaryApp {
+            constructor() {
+                this.diaries = JSON.parse(localStorage.getItem('diaries')) || [];
+                this.currentEditId = null;
+                this.viewMode = 'grid'; // grid 或 list
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.render();
+                
+                // 设置今天的日期为默认值
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('diaryDate').value = today;
+            }
+
+            bindEvents() {
+                // 模态框相关事件
+                document.getElementById('addDiaryBtn').addEventListener('click', () => this.openModal());
+                document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+                document.getElementById('cancelBtn').addEventListener('click', () => this.closeModal());
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveDiary());
+                document.getElementById('deleteBtn').addEventListener('click', () => this.deleteDiary());
+                
+                // 搜索和筛选事件
+                document.getElementById('searchInput').addEventListener('input', () => this.render());
+                document.getElementById('sortSelect').addEventListener('change', () => this.render());
+                document.getElementById('dateFilter').addEventListener('change', () => this.render());
+                
+                // 视图切换事件
+                document.getElementById('viewToggle').addEventListener('click', () => this.toggleView());
+                
+                // 导出事件
+                document.getElementById('exportBtn').addEventListener('click', () => this.exportDiaries());
+                
+                // 点击模态框外部关闭
+                document.getElementById('diaryModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'diaryModal') {
+                        this.closeModal();
+                    }
+                });
+            }
+
+            openModal(id = null) {
+                const modal = document.getElementById('diaryModal');
+                const modalTitle = document.getElementById('modalTitle');
+                const deleteBtn = document.getElementById('deleteBtn');
+                
+                if (id) {
+                    // 编辑模式
+                    this.currentEditId = id;
+                    const diary = this.diaries.find(d => d.id === id);
+                    modalTitle.textContent = '编辑日记';
+                    document.getElementById('diaryDate').value = diary.date;
+                    document.getElementById('diaryTitle').value = diary.title;
+                    document.getElementById('diaryContent').value = diary.content;
+                    document.getElementById('diaryMood').value = diary.mood;
+                    deleteBtn.classList.remove('hidden');
+                } else {
+                    // 新建模式
+                    this.currentEditId = null;
+                    modalTitle.textContent = '新建日记';
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('diaryDate').value = today;
+                    document.getElementById('diaryTitle').value = '';
+                    document.getElementById('diaryContent').value = '';
+                    document.getElementById('diaryMood').value = 'happy';
+                    deleteBtn.classList.add('hidden');
+                }
+                
+                modal.classList.remove('hidden');
+                document.getElementById('diaryTitle').focus();
+            }
+
+            closeModal() {
+                document.getElementById('diaryModal').classList.add('hidden');
+                this.currentEditId = null;
+            }
+
+            saveDiary() {
+                const date = document.getElementById('diaryDate').value;
+                const title = document.getElementById('diaryTitle').value.trim();
+                const content = document.getElementById('diaryContent').value.trim();
+                const mood = document.getElementById('diaryMood').value;
+                
+                if (!date || !title || !content) {
+                    this.showToast('请填写所有必填字段');
+                    return;
+                }
+                
+                const diaryData = {
+                    date,
+                    title,
+                    content,
+                    mood,
+                    timestamp: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                if (this.currentEditId) {
+                    // 更新现有日记
+                    const index = this.diaries.findIndex(d => d.id === this.currentEditId);
+                    this.diaries[index] = { ...this.diaries[index], ...diaryData };
+                    this.showToast('日记已更新');
+                } else {
+                    // 创建新日记
+                    diaryData.id = Date.now().toString();
+                    this.diaries.push(diaryData);
+                    this.showToast('日记已保存');
+                }
+                
+                this.saveToLocalStorage();
+                this.render();
+                this.closeModal();
+            }
+
+            deleteDiary() {
+                if (confirm('确定要删除这篇日记吗？此操作不可恢复。')) {
+                    this.diaries = this.diaries.filter(d => d.id !== this.currentEditId);
+                    this.saveToLocalStorage();
+                    this.render();
+                    this.closeModal();
+                    this.showToast('日记已删除');
+                }
+            }
+
+            toggleView() {
+                this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+                const icon = document.querySelector('#viewToggle i');
+                icon.classList.toggle('fa-th-large');
+                icon.classList.toggle('fa-list');
+                this.render();
+            }
+
+            getFilteredDiaries() {
+                let filtered = [...this.diaries];
+                
+                // 搜索筛选
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                if (searchTerm) {
+                    filtered = filtered.filter(diary => 
+                        diary.title.toLowerCase().includes(searchTerm) || 
+                        diary.content.toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                // 日期筛选
+                const dateFilter = document.getElementById('dateFilter').value;
+                if (dateFilter) {
+                    filtered = filtered.filter(diary => diary.date === dateFilter);
+                }
+                
+                // 排序
+                const sortBy = document.getElementById('sortSelect').value;
+                filtered.sort((a, b) => {
+                    const dateA = new Date(a.date).getTime();
+                    const dateB = new Date(b.date).getTime();
+                    return sortBy === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+                
+                return filtered;
+            }
+
+            render() {
+                const diaryList = document.getElementById('diaryList');
+                const emptyState = document.getElementById('emptyState');
+                const diaries = this.getFilteredDiaries();
+                
+                if (diaries.length === 0) {
+                    diaryList.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                
+                emptyState.classList.add('hidden');
+                
+                if (this.viewMode === 'grid') {
+                    diaryList.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+                    diaryList.innerHTML = diaries.map(diary => this.createGridCard(diary)).join('');
+                } else {
+                    diaryList.className = 'space-y-4';
+                    diaryList.innerHTML = diaries.map(diary => this.createListItem(diary)).join('');
+                }
+            }
+
+            createGridCard(diary) {
+                const moodIcons = {
+                    happy: '😊',
+                    sad: '😢',
+                    excited: '🤩',
+                    calm: '😌',
+                    angry: '😠',
+                    tired: '😴'
+                };
+                
+                const formattedDate = new Date(diary.date).toLocaleDateString('zh-CN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                
+                const excerpt = diary.content.length > 100 
+                    ? diary.content.substring(0, 100) + '...' 
+                    : diary.content;
+                
+                return `
+                    <div class="diary-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer fade-in" onclick="app.openModal('${diary.id}')">
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="text-lg font-semibold text-gray-900 line-clamp-2">${this.escapeHtml(diary.title)}</h3>
+                                <span class="text-2xl ml-2">${moodIcons[diary.mood] || '😊'}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-3">${formattedDate}</p>
+                            <p class="text-gray-700 line-clamp-3">${this.escapeHtml(excerpt)}</p>
+                        </div>
+                        <div class="px-5 py-3 bg-gray-50 border-t flex justify-between items-center text-sm text-gray-500">
+                            <span>${diary.content.length} 字</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+            }
+
+            createListItem(diary) {
+                const moodIcons = {
+                    happy: '😊',
+                    sad: '😢',
+                    excited: '🤩',
+                    calm: '😌',
+                    angry: '😠',
+                    tired: '😴'
+                };
+                
+                const formattedDate = new Date(diary.date).toLocaleDateString('zh-CN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                
+                return `
+                    <div class="diary-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer fade-in flex" onclick="app.openModal('${diary.id}')">
+                        <div class="w-20 p-4 flex flex-col items-center justify-center bg-indigo-50">
+                            <span class="text-3xl mb-1">${moodIcons[diary.mood] || '😊'}</span>
+                            <span class="text-xs text-indigo-600">${new Date(diary.date).getDate()}</span>
+                        </div>
+                        <div class="flex-grow p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(diary.title)}</h3>
+                                <span class="text-sm text-gray-500 whitespace-nowrap ml-2">${formattedDate}</span>
+                            </div>
+                            <p class="text-gray-700 line-clamp-2">${this.escapeHtml(diary.content)}</p>
+                            <div class="mt-2 text-sm text-gray-500">${diary.content.length} 字</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            exportDiaries() {
+                if (this.diaries.length === 0) {
+                    this.showToast('没有日记可以导出');
+                    return;
+                }
+                
+                let content = '# 我的日记导出\n\n';
+                const sortedDiaries = [...this.diaries].sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                sortedDiaries.forEach(diary => {
+                    content += `## ${diary.title}\n\n`;
+                    content += `**日期**: ${diary.date}\n`;
+                    content += `**心情**: ${diary.mood}\n\n`;
+                    content += `${diary.content}\n\n---\n\n`;
+                });
+                
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `日记导出_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.showToast('日记已导出');
+            }
+
+            saveToLocalStorage() {
+                localStorage.setItem('diaries', JSON.stringify(this.diaries));
+            }
+
+            showToast(message) {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                
+                toastMessage.textContent = message;
+                toast.classList.remove('translate-y-20');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20');
+                }, 3000);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // 初始化应用
+        const app = new DiaryApp();
+    </script>
+</body>
+</html>
